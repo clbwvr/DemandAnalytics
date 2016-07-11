@@ -51,8 +51,8 @@
 /* Include statements */
 /*==================================================================================*/
 
-%include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\Variable_Reduction\var_ts_corr.sas";
-%include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\Variable_Reduction\choose_vars.sas";
+%include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\sas_dp_analytics\Variable Selection\var_ts_corr.sas";
+%include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\sas_dp_analytics\Variable Selection\choose_vars.sas";
 
 
 
