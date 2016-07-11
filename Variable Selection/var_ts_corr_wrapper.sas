@@ -83,30 +83,41 @@
 /* Variable stats */
 /*==================================================================================*/
 
-%let i=1;
-%let xi=%scan(&x,&i);
-%do %until(&xi eq %nrstr( ));
+	%let i=1;
+	%let xi=%scan(&x,&i);
+	%do %until(&xi eq %nrstr( ));
 
-	%var_ts_corr(	libn=&outlibn,
-					outlibn=&outlibn,
-					dsn=&libn..&outdsn_accum_data,
-					outdsn=&xi,
-					byvar=&byvar,
-					x=&xi,
-					y=&y,
-					time_var=&time_var,
-					time_int=&time_int
-					);
+		%var_ts_corr(	libn=&outlibn,
+						outlibn=&outlibn,
+						dsn=&libn..&outdsn_accum_data,
+						outdsn=&xi,
+						byvar=&byvar,
+						x=&xi,
+						y=&y,
+						time_var=&time_var,
+						time_int=&time_int
+						);
 
-	PROC SORT data=&outlibn..&xi.;
-		by &byvar. stat x;
-	RUN;QUIT;
+		PROC SORT data=&outlibn..&xi.;
+			by &byvar. stat x;
+		RUN;QUIT;
 
-	%let i=%eval(&i+1);
-	%let xi=%scan(&x,&i.);
-%end;
+		%let i=%eval(&i+1);
+		%let xi=%scan(&x,&i.);
+	%end;
+	
+	*Get longest variable name;
+	%let len = 0;
+	%let i=1;
+	%let xi=%scan(&x,&i);
+	%do %until(&xi eq %nrstr( ));
+		%if %length(&xi) > &len %then %let len = %length(&xi);
+		%let i=%eval(&i+1);
+		%let xi=%scan(&x,&i.);
+	%end;
 
 	DATA &libn..&outdsn_corr;
+		length x $ &len;
 		merge 
 			%let i=1;
 			%let xi=%scan(&x,&i);
@@ -166,6 +177,3 @@
 	RUN;QUIT;
 
 %mend;
-
-
-
