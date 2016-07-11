@@ -3,4 +3,4 @@ data a;
 run;
 
 proc print;
-run;
+run;quit;
