@@ -30,12 +30,14 @@
 %MACRO var_ts_corr(	libn=,
 					outlibn=,
 					dsn=,
+					outforecast=,
 					outdsn=,
 					byvar=,
 					y=,
 					x=,
 					time_var=,
-					time_int=
+					time_int=,
+					enddate=
 				);
 
 
@@ -50,15 +52,23 @@
 		arimax;
 	RUN;QUIT;
 
-	PROC hpfengine data=&dsn. out=_null_ inest=&outlibn..est outest=&outlibn..f_est modelrepository=&outlibn..mycat outfor=&outlibn..outfor;
+	PROC hpfengine data=&dsn. out=_null_ inest=&outlibn..est outest=&outlibn..f_est modelrepository=&outlibn..mycat outfor=&outlibn..outfor_x
+								lead=24;
 		id &time_var interval= &time_int;
 		by &byvar;
 		forecast &x / task=select ;
 	RUN;QUIT;
 
-	DATA &outlibn..x_outfor(rename=(error=&x._pw));
-		set &outlibn..outfor(keep=&byvar error);
-		where error ne .;
+	DATA &outlibn..x_outfor(keep=&byvar error rename=(error=&x._pw)) &libn..&outforecast(keep=&byvar &time_var time_dummy predict rename=(predict=&x));
+		set &outlibn..outfor_x;
+		if (&time_var le &enddate) then do;
+			if (error eq .) then delete;
+			output &outlibn..x_outfor;
+		end;
+		else do;
+			time_dummy=&time_int(&time_var);	
+			output &libn..&outforecast;
+		end;
 	RUN;
 
 /*==================================================================================================================================*/
@@ -70,14 +80,15 @@
 		_NAME_ = "&y";
 	RUN;
 
-	PROC hpfengine data=&dsn. out=_null_ inest=&outlibn..f_est modelrepository=&outlibn..mycat outfor=&outlibn..outfor;
+	PROC hpfengine data=&dsn. out=_null_ inest=&outlibn..f_est modelrepository=&outlibn..mycat outfor=&outlibn..outfor_y
+					lead=0;
 		id &time_var interval=&time_int;
 		by &byvar;
 		forecast &y / task=fit ;
 	RUN;QUIT;
 
-	DATA &outlibn..y_outfor(rename=(error=&y._pw));
-		set &outlibn..outfor(keep=&byvar error);
+	DATA &outlibn..y_outfor(keep=&byvar error rename=(error=&y._pw));
+		set &outlibn..outfor_y;
 		where error ne .;
 	RUN;
 
@@ -195,11 +206,12 @@
 /*   delete intermediate files */
 /*==================================================================================*/
 
-/*	PROC DATASETS library=&outlibn memtype=data nolist;
+	PROC DATASETS library=&outlibn memtype=data nolist;
 		delete 	sort_data
 				est
 				f_est
-				outfor
+				outfor_x
+				outfor_y
 				x_outfor
 				y_outfor
 				x_y_filter_data
@@ -214,7 +226,7 @@
 				wide
 				long
 				;
-	RUN;QUIT;*/
+	RUN;QUIT;
 
 %MEND;
 

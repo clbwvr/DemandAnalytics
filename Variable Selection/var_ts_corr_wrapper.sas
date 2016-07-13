@@ -34,11 +34,13 @@
 							outdsn_accum_data=,
 							outdsn_corr=,
 							outdsn_select=,
+							outdsn_forecast_x=,
 							byvar=,
 							y=,
 							x=,
 							time_var=,
 							time_int=,
+							enddate=,
 							run_association=1, 
 							stat=RSQ,
 							pw=, 
@@ -51,10 +53,8 @@
 /* Include statements */
 /*==================================================================================*/
 
-%include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\sas_dp_analytics\Variable Selection\var_ts_corr.sas";
-%include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\sas_dp_analytics\Variable Selection\choose_vars.sas";
-
-
+%include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\Variable_Reduction\var_ts_corr.sas";
+%include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\Variable_Reduction\choose_vars.sas";
 
 /*==================================================================================================================================*/
 /* Prepare data																			 											                                                     	*/
@@ -69,7 +69,7 @@
 		id &time_var. Interval=&time_int.;
 		VAR &y. /	ACCUMULATE=TOTAL;
 		VAR &x. /	ACCUMULATE=AVERAGE;
-		var month12 / accumulate=maximum;
+		var time_dummy / accumulate=maximum;
 	RUN;QUIT;
 
 /*==================================================================================*/
@@ -82,7 +82,6 @@
 /*==================================================================================*/
 /* Variable stats */
 /*==================================================================================*/
-
 	%let i=1;
 	%let xi=%scan(&x,&i);
 	%do %until(&xi eq %nrstr( ));
@@ -90,12 +89,14 @@
 		%var_ts_corr(	libn=&outlibn,
 						outlibn=&outlibn,
 						dsn=&libn..&outdsn_accum_data,
+						outforecast=&xi._f,
 						outdsn=&xi,
 						byvar=&byvar,
 						x=&xi,
 						y=&y,
 						time_var=&time_var,
-						time_int=&time_int
+						time_int=&time_int,
+						enddate=&enddate
 						);
 
 		PROC SORT data=&outlibn..&xi.;
@@ -122,12 +123,25 @@
 			%let i=1;
 			%let xi=%scan(&x,&i);
 			%do %until(&xi eq %nrstr( ));
-				&outlibn..&xi	
+				&outlibn..&xi
 				%let i=%eval(&i+1);
 				%let xi=%scan(&x,&i.);
 			%end;
 		;
 		by &byvar. stat x;
+	RUN;
+
+	DATA &libn..&outdsn_forecast_x;
+		merge 
+			%let i=1;
+			%let xi=%scan(&x,&i);
+			%do %until(&xi eq %nrstr( ));
+				&outlibn..&xi._f
+				%let i=%eval(&i+1);
+				%let xi=%scan(&x,&i.);
+			%end;
+		;
+		by &byvar. &time_var;
 	RUN;
 
 	PROC DATASETS library=&libn nolist;
@@ -141,6 +155,13 @@
 
 	PROC DATASETS library=&outlibn memtype=data nolist;
 		delete 	&x
+					%let i=1;
+			%let xi=%scan(&x,&i);
+			%do %until(&xi eq %nrstr( ));
+				&xi._f
+				%let i=%eval(&i+1);
+				%let xi=%scan(&x,&i.);
+			%end;
 				;
 	RUN;QUIT;
 
@@ -166,7 +187,6 @@
 					pw=&pw
 					);
 
-
 /*==================================================================================*/
 /* Delete intermediate files */
 /*==================================================================================*/
@@ -177,3 +197,6 @@
 	RUN;QUIT;
 
 %mend;
+
+
+
