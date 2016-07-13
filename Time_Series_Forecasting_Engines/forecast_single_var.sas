@@ -25,9 +25,11 @@
 %include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\sas_dp_analytics\Variable Selection\var_ts_corr_wrapper.sas";
 %include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\sas_dp_analytics\Time_Series_Forecasting_Engines\model_step.sas";
 %include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\sas_dp_analytics\Time_Series_Forecasting_Engines\recon.sas";
+%include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\sas_dp_analytics\Time_Series_Forecasting_Engines\forecast_ensemble.sas";
 
-libname ss "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS\";
-libname ss_out "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS_out\";
+
+*libname ss "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS\";
+*libname ss_out "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS_out\";
 
 
   
@@ -105,7 +107,25 @@ libname ss_out "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS_out\";
 		datevar=start_dt, 
 		time_int=month
 		);
-	
+
+/*==================================================================================================================================*/
+/* Ensemble */ 
+/*==================================================================================================================================*/
+/*
+	%forecast_ensemble(	libn=, 
+						outlibn=,
+						dsn_train=,
+						dsn_score=,
+						outdsn=,
+						id_var=,
+						y=,
+						input=,
+						date_var=,
+						time_int=,
+						hist_end_date=,
+						no_time_per=
+						);
+
 /*==================================================================================================================================*/
 /* Delete intermediate files */ 
 /*==================================================================================================================================*/
