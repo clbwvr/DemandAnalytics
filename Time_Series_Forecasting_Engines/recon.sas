@@ -29,6 +29,7 @@
 				outlibn=, 
 				dsn_disagg=, 
 				dsn_agg=, 
+				outdsn_forecast=,
 				y=,
 				prediction=, 
 				byvar_leaf=, 
@@ -47,7 +48,7 @@
 	RUN;
 
 	PROC HPFRECONCILE disaggdata=&outlibn..sort_leaf aggdata=&dsn_agg 
-		outfor=&outlibn..test(drop=lower upper error std _RECONSTATUS_)
+		outfor=&libn..&outdsn_forecast(drop=lower upper error std _RECONSTATUS_)
 		direction=td
 		alpha=&HPF_FORECAST_ALPHA
 		sign=NONNEGATIVE 
