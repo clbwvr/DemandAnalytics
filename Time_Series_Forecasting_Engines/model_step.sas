@@ -1,3 +1,12 @@
+/*
+*	model_step.sas
+*
+*	AUTHORS: 		Christian Haxholdt, PhD. (christian.haxholdt@sas.com)
+*					Caleb Weaver (caleb.weaver@sas.com)
+*
+*	PARAMETERS:
+*
+*/
 %macro model_step(	libn=,
 					outlibn=,
 					dsn_var_sel=,
@@ -58,44 +67,33 @@
 		%let col=%scan(&byvar,-1);
 
 		PROC SQL noprint;
-			select distinct &col into : col_vals separated by ' ' from &outlibn..train_score;
+			select distinct &col into : col_vals separated by '#' from &outlibn..train_score;
 		QUIT;
 
 		%let j=1;
-		%let col_val = %scan(&col_vals,&j);
+		%let col_val = %scan(&col_vals,&j,#);
 		%do %until(&col_val eq %nrstr( ));
 			
-			DATA &outlibn..vals_&col_val;
+			DATA &outlibn..vals_&j;
 				set &outlibn..train_score;
 				where &col = "&col_val";
 			RUN;
 
-			PROC HPREG data=&outlibn..vals_&col_val noprint;
+			PROC HPREG data=&outlibn..vals_&j noprint;
 				partition roleVar=data_type(train='0' test='1');
 				id &byvar. &time_var. &y.;
 				class time_dummy;
 				model &y.=time_dummy &indeps.;
 				*selection method=lasso;
-				output out=&outlibn..r_p_&col_val. pred=prediction;
+				output out=&outlibn..r_p_&j pred=prediction;
 			RUN;QUIT; 
 
 			%let j=%eval(&j+1);
-			%let col_val = %scan(&col_vals,&j);
+			%let col_val = %scan(&col_vals,&j,#);
 		%end;
 
 		DATA &outlibn..reg_prediction;
-			set 
-				%let j=1;
-				%let col_val = %scan(&col_vals,&j);
-				%do %until(&col_val eq %nrstr( ));
-					
-					&outlibn..r_p_&col_val.
-						
-				%let j=%eval(&j+1);
-				%let col_val=%scan(&col_vals,&j.);
-
-				%end;
-				;
+			set	&outlibn..r_p_:;
 		RUN;
 
 		* do not allow negative forecasts ;
