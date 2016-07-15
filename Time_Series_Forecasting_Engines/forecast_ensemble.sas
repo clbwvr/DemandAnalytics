@@ -43,7 +43,7 @@
 /*====================================================================================================*/
 
 	DATA &outlibn..train_add;
-		set /*&libn..&dsn_train.*/ &dsn_train.;	
+		set &dsn_train.;	
 		if &date_var >= intnx("&time_int", &hist_end_date, -&no_time_per) then do;
 			train = 1;
 		end;
@@ -64,7 +64,7 @@
 	PROC HPREG data=&outlibn..train_add noprint;
 		id &id_var.;
 		%if not (&no_time_per=0) %then %do; partition rolevar=train(train='1' validate='0'); %end;
-		model &y=&input.;
+		model &y=&input. / noint;
 		output out=&outlibn..pred_train_reg predicted=predict_reg;
 		code file="hpreg_code.sas";
 	RUN;QUIT;

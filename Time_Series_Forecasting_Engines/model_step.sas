@@ -56,7 +56,8 @@
 		
 		PROC HPREG data=&outlibn..train_score noprint;
 			partition roleVar=data_type(train='0' test='1');
-			id &time_var. &byvar. &y;
+			by &byvar.;
+			id &byvar. &time_var. &y;
 			class time_dummy;
 			model &y=time_dummy &indeps;
 		*	selection method=lasso;

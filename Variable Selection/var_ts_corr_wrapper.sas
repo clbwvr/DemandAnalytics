@@ -37,7 +37,8 @@
 							outdsn_forecast_x=,
 							byvar=,
 							y=,
-							x=,
+							total_input=,
+							ave_input=,
 							time_var=,
 							time_int=,
 							enddate=,
@@ -68,9 +69,16 @@
 		by &BYVAR.;
 		id &time_var. Interval=&time_int.;
 		VAR &y. /	ACCUMULATE=TOTAL;
-		VAR &x. /	ACCUMULATE=AVERAGE;
+		%if not (&total_input=) %then %do;
+			var &total_input. / ACCUMULATE=TOTAL;
+		%end;
+		%if not (&ave_input=) %then %do;
+			var &ave_input. / ACCUMULATE=AVERAGE;
+		%end;
 		var time_dummy / accumulate=maximum;
 	RUN;QUIT;
+
+%let x=&total_input. &ave_input.; 
 
 /*==================================================================================*/
 /* Run assosciation macro or skip */

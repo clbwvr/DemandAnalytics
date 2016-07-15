@@ -27,6 +27,7 @@
 								out_train=,
 								out_score=,
 								byvar=,
+								y=,
 								predict=,
 								date_var=,
 								score_start_date=
@@ -36,38 +37,43 @@
 /* Merge forecast files */
 /*=======================================================================================================*/
 
-%let i = 1;
-%let dsn_iter = %scan(&dsn, &i);
-%do %while("&dsn_iter" ne "");
-PROC SQL;
-   CREATE TABLE &outlibn..ts_&i AS 
-   SELECT
-    %let j = 1;
-	%let byvar_iter = %scan(&byvar, &j);
-  	%do %while("&byvar_iter" ne "");
-	    t1.&byvar_iter,
-	    %let j = %eval(&j + 1);
-	    %let byvar_iter = %scan(&byvar, &j); 
-    %end; 
-	t1.&date_var, 
-	t1.ACTUAL,
-	t1.&PREDICT as PREDICT&i
-    FROM 
-	&libn..&dsn_iter t1;
-QUIT;
-%let i = %eval(&i + 1);
-%let dsn_iter = %scan(&dsn, &i);
-%end;
-
-DATA &outlibn..merge_forecast;
-	merge 
-    %let k = 1;
+	%let i = 1;
 	%let dsn_iter = %scan(&dsn, &i);
-  	%do k=1 %to &i - 1;
-	    &outlibn..ts_&k  
-    %end;
-	; by &byvar.;
-RUN;
+	%do %while("&dsn_iter" ne "");
+	PROC SQL;
+	   CREATE TABLE &outlibn..ts_&i AS 
+	   SELECT
+	    %let j = 1;
+		%let byvar_iter = %scan(&byvar, &j);
+	  	%do %while("&byvar_iter" ne "");
+		    t1.&byvar_iter,
+		    %let j = %eval(&j + 1);
+		    %let byvar_iter = %scan(&byvar, &j); 
+	    %end; 
+		t1.&date_var, 
+		t1.&y,
+		t1.&PREDICT as PREDICT&i
+	    FROM 
+		&libn..&dsn_iter t1;
+	QUIT;
+
+	PROC SORT data=&outlibn..ts_&i;
+		by &byvar.;
+	RUN;QUIT;
+
+	%let i = %eval(&i + 1);
+	%let dsn_iter = %scan(&dsn, &i);
+	%end;
+
+	DATA &outlibn..merge_forecast;
+		merge 
+	    %let k = 1;
+		%let dsn_iter = %scan(&dsn, &i);
+	  	%do k=1 %to &i - 1;
+			&outlibn..ts_&k 
+	    %end;
+		; by &byvar.;
+	RUN;
 
 /*=======================================================================================================*/
 /* Spilt data into train and score */

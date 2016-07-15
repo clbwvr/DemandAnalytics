@@ -26,10 +26,10 @@
 %include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\sas_dp_analytics\Time_Series_Forecasting_Engines\model_step.sas";
 %include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\sas_dp_analytics\Time_Series_Forecasting_Engines\recon.sas";
 %include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\sas_dp_analytics\Time_Series_Forecasting_Engines\forecast_ensemble.sas";
+%include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\sas_dp_analytics\Time_Series_Forecasting_Engines\create_train_score_data.sas";
 
-
-*libname ss "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS\";
-*libname ss_out "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS_out\";
+/*libname ss "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS\";*/
+/*libname ss_out "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS_out\";*/
 
 
   
@@ -49,10 +49,10 @@
 /* Variable selection level									*/
 /*==================================================================================================================================*/
 *region pbu category product_line material;
-%let by_var=region pbu;
-%let ext=b;
-
-/*%var_ts_corr_wrapper(	libn=ss,
+%let by_var=region ;
+%let ext=a;
+/*
+%var_ts_corr_wrapper(	libn=ss,
 						outlibn=ss_out,
 						dsn=ss.gy_ts,
 						outdsn_accum_data=&ext._ts,
@@ -60,9 +60,8 @@
 						outdsn_select=var_&ext,
 						outdsn_forecast_x=forecast_x_&ext,
 						byvar=&by_var.,
-						x=CFNAI CUSR0000SETB01 Disp_Inc_STLFed FEDFUNDS isratio NAPMPI RECPROUSM156N T10Y2YM
-							houst ir TOTBUSSMSA TRFVOLUSM227NFWA VMT_STLFed TRUCKD11 TSITTL TTLCONS Con_Sent_STLFed 
-							UMTMVS UNRATE USSLIND LV_SAAR__M__Wards Comm_SAAR__M__Wards ISRatio_STLFed Gas_Price_STLFed,
+						total_input=TOTBUSSMSA Disp_Inc_STLFed VMT_STLFed,
+						ave_input=CFNAI ISRatio_STLFed Gas_Price_STLFed Comm_SAAR__M__Wards LV_SAAR__M__Wards,
 						y=shipments,
 						time_var=start_dt,
 						time_int=month,
@@ -70,15 +69,15 @@
 						run_association=1, 
 						stat=RSQ, 
 						pw=1,
-						threshold=0.05, 
-						maxvar=7,
+						threshold=0.1, 
+						maxvar=4,
 						quantile=	
 					);   
 
 /*==================================================================================================================================*/
 /* Modeling Step */
 /*==================================================================================================================================*/
-/*
+
 %model_step(libn=ss,
 			outlibn=ss_out,
 			dsn_var_sel=ss.var_&ext,
@@ -95,35 +94,52 @@
 /*==================================================================================================================================*/
 /* Reconciliation */
 /*==================================================================================================================================*/
+/*
+	%recon(	libn=ss, 
+			outlibn=ss_out, 
+			dsn_disagg=ss.v_final, 
+			dsn_agg=ss.d_final, 
+			outdsn_forecast=d_v_recon,
+			y=shipments,
+			prediction=prediction, 
+			byvar_leaf=product_line material, 
+			datevar=start_dt, 
+			time_int=month
+			);
 
-%recon(	libn=ss, 
-		outlibn=ss_out, 
-		dsn_disagg=ss.v_final, 
-		dsn_agg=ss.d_final, 
-		outdsn_forecast=d_v_recon,
-		y=shipments,
-		prediction=prediction, 
-		byvar_leaf=region material, 
-		datevar=start_dt, 
-		time_int=month
-		);
+/*==================================================================================================================================*/
+/* Create train&score data set for ensemble */ 
+/*==================================================================================================================================*/
+/*
+	%create_train_score_data(	libn=ss, 
+								outlibn=ss_out,
+								dsn=a_v_recon b_v_recon c_v_recon d_v_recon v_final,
+								out_dsn=test,
+								out_train=test_train,
+								out_score=test_score,
+								byvar=material,
+								y=shipments,
+								predict=prediction,
+								date_var=start_dt,
+								score_start_date='01MAR2015'd
+								);
 
 /*==================================================================================================================================*/
 /* Ensemble */ 
 /*==================================================================================================================================*/
 /*
-	%forecast_ensemble(	libn=, 
-						outlibn=,
-						dsn_train=,
-						dsn_score=,
-						outdsn=,
-						id_var=,
-						y=,
-						input=,
-						date_var=,
-						time_int=,
-						hist_end_date=,
-						no_time_per=
+	%forecast_ensemble(	libn=ss, 
+						outlibn=ss_out,
+						dsn_train=ss.test_train,
+						dsn_score=ss.test_score,
+						outdsn=test_tt,
+						id_var=material,
+						y=shipments,
+						input=predict2,
+						date_var=start_dt,
+						time_int=month,
+						hist_end_date='01FEB2015'd,
+						no_time_per=1
 						);
 
 /*==================================================================================================================================*/
@@ -139,4 +155,6 @@
 
 
 
-									
+						/*	x=CUSR0000SETB01  FEDFUNDS isratio NAPMPI RECPROUSM156N T10Y2YM
+							houst ir TOTBUSSMSA TRFVOLUSM227NFWA  TRUCKD11 TSITTL TTLCONS Con_Sent_STLFed 
+							UMTMVS UNRATE USSLIND   ,*/								
