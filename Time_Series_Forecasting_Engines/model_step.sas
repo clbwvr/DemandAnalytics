@@ -54,50 +54,49 @@
 			select &xcol into : indeps separated  by ' ' from &outlibn..t1 where id=&i;
 		QUIT;
 		
-		* BEGIN UNTESTED LOOPS - CALEB;
-		%let j=1;
-		%let var=%scan(&byvar,&j);
-		%do %until(&var eq %nrstr( ));
+		* BEGIN UNTESTED - CALEB;
+		%let col=%scan(&byvar,-1);
 
-			PROC HPREG data=&outlibn..train_score noprint;
+		proc sql;
+			select distinct &col into : col_vals separated by ' ' from &outlibn..train_score;
+		quit;
+
+		%let j=1;
+		%let col_val = %scan(&col_vals,&j);
+		%do %until(&col_val eq %nrstr( ));
+			
+			data &outlibn..vals_&col_val;
+				set &outlibn..train_score;
+				where &col = "&col_val";
+			run;
+
+			PROC HPREG data=&outlibn..vals_&col_val noprint;
 				partition roleVar=data_type(train='0' test='1');
-				by &var;
 				id &var &time_var. &y;
 				class time_dummy;
 				model &y=time_dummy &indeps;
 				*selection method=lasso;
-				output out=&outlibn..r_p_&var pred=prediction;
+				output out=&outlibn..r_p_&col_val pred=prediction;
 			RUN;QUIT; 
 
 			%let j=%eval(&j+1);
-			%let var=%scan(&byvar,&j.);
+			%let col_val = %scan(&col_vals,&j);
 		%end;
-
-		PROC HPREG data=&outlibn..train_score noprint;
-			partition roleVar=data_type(train='0' test='1');
-			by &byvar;
-			id &byvar &time_var. &y;
-			class time_dummy;
-			model &y=time_dummy &indeps;
-			*selection method=lasso;
-			output out=&outlibn..r_p_leaf pred=prediction;
-		RUN;QUIT; 
 
 		data &outlibn..reg_prediction;
 			set 
 				%let j=1;
-				%let var=%scan(&byvar,&j);
-				%do %until(&var eq %nrstr( ));
+				%let col_val = %scan(&col_vals,&j);
+				%do %until(&col_val eq %nrstr( ));
 					
-					&outlibn..r_p_&var
-					%let j=%eval(&j+1);
-					%let var=%scan(&byvar,&j.);
+					&outlibn..r_p_&col_val
+						
+				%let j=%eval(&j+1);
+				%let col_val=%scan(&col_vals,&j.);
 
 				%end;
-
-				&outlibn..r_p_leaf;
 		run;
-		* END UNTESTED LOOPS - CALEB;
+		* END UNTESTED - CALEB;
 
 		* do not allow negative forecasts ;
 		DATA &libn..&outdsn.;
