@@ -54,49 +54,49 @@
 			select &xcol into : indeps separated  by ' ' from &outlibn..t1 where id=&i;
 		QUIT;
 		
-		* BEGIN UNTESTED - CALEB;
+
 		%let col=%scan(&byvar,-1);
 
-		proc sql;
+		PROC SQL noprint;
 			select distinct &col into : col_vals separated by ' ' from &outlibn..train_score;
-		quit;
+		QUIT;
 
 		%let j=1;
 		%let col_val = %scan(&col_vals,&j);
 		%do %until(&col_val eq %nrstr( ));
 			
-			data &outlibn..vals_&col_val;
+			DATA &outlibn..vals_&col_val;
 				set &outlibn..train_score;
 				where &col = "&col_val";
-			run;
+			RUN;
 
 			PROC HPREG data=&outlibn..vals_&col_val noprint;
 				partition roleVar=data_type(train='0' test='1');
-				id &var &time_var. &y;
+				id &byvar. &time_var. &y.;
 				class time_dummy;
-				model &y=time_dummy &indeps;
+				model &y.=time_dummy &indeps.;
 				*selection method=lasso;
-				output out=&outlibn..r_p_&col_val pred=prediction;
+				output out=&outlibn..r_p_&col_val. pred=prediction;
 			RUN;QUIT; 
 
 			%let j=%eval(&j+1);
 			%let col_val = %scan(&col_vals,&j);
 		%end;
 
-		data &outlibn..reg_prediction;
+		DATA &outlibn..reg_prediction;
 			set 
 				%let j=1;
 				%let col_val = %scan(&col_vals,&j);
 				%do %until(&col_val eq %nrstr( ));
 					
-					&outlibn..r_p_&col_val
+					&outlibn..r_p_&col_val.
 						
 				%let j=%eval(&j+1);
 				%let col_val=%scan(&col_vals,&j.);
 
 				%end;
-		run;
-		* END UNTESTED - CALEB;
+				;
+		RUN;
 
 		* do not allow negative forecasts ;
 		DATA &libn..&outdsn.;
@@ -104,7 +104,7 @@
 			 if ^missing(prediction) and prediction < 0 then do;
 			  prediction = 0;
 			 end;
-		RUN; 
+		RUN;
 	%end;
 
 /*==================================================================================*/
@@ -115,6 +115,8 @@
 		delete	t1
 				train_score
 				reg_prediction
+				vals_:
+				r_p_:
 				;
 	RUN;QUIT;
 
