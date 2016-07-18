@@ -62,21 +62,26 @@
 		PROC SQL noprint;
 			select &xcol into : indeps separated  by ' ' from &outlibn..t1 where id=&i;
 		QUIT;
-		
 
 		%let col=%scan(&byvar,-1);
 
-		PROC SQL noprint;
-			select distinct &col into : col_vals separated by '#' from &outlibn..train_score;
-		QUIT;
+		proc sort data=&outlibn..train_score;
+			by &col;
+		run;quit;
 
-		%let j=1;
-		%let col_val = %scan(&col_vals,&j,#);
-		%do %until(&col_val eq %nrstr( ));
-			
+		data &outlibn..train_score;
+					set &outlibn..train_score end=eof;
+					by &col;
+					retain colid 0;
+					if first.&col then colid + 1;
+					if eof then call symputx("last_colid",colid);
+		run;
+
+		%do j = 1 %to &last_colid;
+
 			DATA &outlibn..vals_&j;
 				set &outlibn..train_score;
-				where &col = "&col_val";
+				where colid = &j;
 			RUN;
 
 			PROC HPREG data=&outlibn..vals_&j noprint;
@@ -86,10 +91,8 @@
 				model &y.=time_dummy &indeps.;
 				*selection method=lasso;
 				output out=&outlibn..r_p_&j pred=prediction;
-			RUN;QUIT; 
+			RUN;QUIT;
 
-			%let j=%eval(&j+1);
-			%let col_val = %scan(&col_vals,&j,#);
 		%end;
 
 		DATA &outlibn..reg_prediction;
