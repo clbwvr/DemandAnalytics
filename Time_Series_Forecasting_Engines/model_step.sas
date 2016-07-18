@@ -58,10 +58,8 @@
 /* Modeling */
 /*==================================================================================*/
 
-	%do i = 1 %to &lastid;
-		PROC SQL noprint;
-			select &xcol into : indeps separated  by ' ' from &outlibn..t1 where id=&i;
-		QUIT;
+/*	%do i = 1 %to &lastid;*/
+
 
 		%let col=%scan(&byvar,-1);
 
@@ -78,7 +76,9 @@
 		run;
 
 		%do j = 1 %to &last_colid;
-
+		PROC SQL noprint;
+			select &xcol into : indeps separated  by ' ' from &outlibn..t1 where id=&j;
+		QUIT;
 			DATA &outlibn..vals_&j;
 				set &outlibn..train_score;
 				where colid = &j;
@@ -106,7 +106,7 @@
 			  prediction = 0;
 			 end;
 		RUN;
-	%end;
+/*	%end;*/
 
 /*==================================================================================*/
 /* Delete intermediate files */
