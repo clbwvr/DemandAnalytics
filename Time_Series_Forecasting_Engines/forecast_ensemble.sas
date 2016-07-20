@@ -160,7 +160,7 @@
 		id &byvar. &date_var.;
 		by &byvar.;
 		%if not (&no_time_per=0) %then %do; partition rolevar=train(train='1' validate='0'); %end;
-		model &y=&input. / noint;
+		model &y=&input.;
 		output out=&outlibn..pred_train_reg predicted=predict_reg;
 		code file="hpreg_code.sas";
 	RUN;QUIT;
@@ -266,6 +266,7 @@
 		diff_2=abs(&y-predict2);
 		diff_3=abs(&y-predict3);
 		diff_4=abs(&y-predict4);
+		diff_5=abs(&y-predict5);
 	RUN;
 
 
