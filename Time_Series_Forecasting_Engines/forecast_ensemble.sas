@@ -167,17 +167,57 @@
 
 * Neural train;
 *------------------------------------------------------------------------------------------------------;
-*loop needed for by var;
-	PROC HPNEURAL data=&outlibn..train_add noprint;
+
+%let col=%scan(&byvar,-1);
+
+proc sort data=&outlibn..train_add;
+	by &col;
+run;quit;
+
+data &outlibn..train_add;
+			set &outlibn..train_add end=eof;
+			by &col;
+			retain colid 0;
+			if first.&col then colid + 1;
+			if eof then call symputx("last_colid",colid);
+run;
+
+%do j = 1 %to &last_colid;
+
+	DATA &outlibn..vals_neur_&j;
+		set &outlibn..train_add;
+		where colid = &j;
+	RUN;
+
+	PROC HPNEURAL data=&outlibn..vals_neur_&j noprint;
 		id &byvar. &date_var.;
 		%if not (&no_time_per=0) %then %do; partition rolevar=train( train=1); %end;
 		input &input. / level=int;
 		target &y / level=int act=tanh;
 		hidden 3;
 		train outmodel=&outlibn..model_info_1 maxiter=1000;
-		score out=&outlibn..pred_train_neural(drop=_WARN_ rename=(P_&y = predict_neural));
+		score out=&outlibn..pred_train_neural_&j(drop=_WARN_ rename=(P_&y = predict_neural));
 		code file="hpneural_code.sas";
 	RUN;QUIT;
+
+	PROC DATASETS library=&outlibn memtype=data nolist;
+		delete  vals_neur_:
+	RUN;QUIT; 
+
+%end;
+
+	DATA &outlibn..pred_train_neural;
+		set &outlibn..pred_train_neural_:;
+	RUN;
+
+	PROC SORT data=&outlibn..pred_train_neural;
+		by &byvar. &date_var.;
+	RUN;QUIT;
+
+	PROC DATASETS library=&outlibn memtype=data nolist;
+		delete  pred_train_neural_:
+	RUN;QUIT; 
+
 
 * Merge;
 *------------------------------------------------------------------------------------------------------;
