@@ -21,28 +21,21 @@
 %include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\Time_Series_Forecasting_Engines\recon.sas";
 %include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\Time_Series_Forecasting_Engines\forecast_ensemble.sas";
 
-libname ss "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS\";
-libname ss_out "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS_out\";
+/*libname ss "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS\";*/
+/*libname ss_out "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS_out\";*/
 
 
 
- /*
+ 
 
-%macro forecast_single_var(libn=, outlibn=, dslist=,
-               byvar=,
-			   startdt=,
-               datevar=,
-			   mode=I,
-			   forecastvar=,
-			   name_index=
-              );
+%macro forecast_single_var();
 
 
 /*==================================================================================================================================*/
 /* Variable selection level									*/
 /*==================================================================================================================================*/
 *region pbu category product_line material;
-%let by_var=region pbu category product_line material;
+%let by_var=region pbu category product_line;
 %let by_var_leaf = product_line material;
 %let ext=v;
 
@@ -104,7 +97,7 @@ libname ss_out "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS_out\";
 /*==================================================================================================================================*/
 /* Modeling Step */
 /*==================================================================================================================================*/
-
+/*
   %let k=1;
   %do %while (%scan(&by_var, &k) ne );
      %let this_var = %scan(&by_var, &k);
@@ -141,7 +134,7 @@ libname ss_out "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS_out\";
 /*==================================================================================================================================*/
 /* Reconciliation */
 /*==================================================================================================================================*/
-
+/*
 %let k=1;
 %do %while (%scan(&by_var, &k) ne );
    %let this_var = %scan(&by_var, &k);
@@ -189,7 +182,7 @@ libname ss_out "C:\Users\chhaxh\Documents\Clients\GoodYear\data\SS_out\";
 /*				;*/
 /*	RUN;QUIT;*/
 
-/*%mend;*/
+%MEND;
 
 
 

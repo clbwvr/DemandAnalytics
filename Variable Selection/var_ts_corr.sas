@@ -228,7 +228,7 @@
 				;
 	RUN;QUIT;
 
-%MEND;
+%MEND var_ts_corr;
 
 /*	%var_ts_corr(	libn=ss,
 					outlibn=ss_out,

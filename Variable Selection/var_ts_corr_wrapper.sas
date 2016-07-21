@@ -204,7 +204,7 @@
 				;
 	RUN;QUIT;
 
-%mend;
+%MEND var_ts_corr_wrapper;
 
 
 
