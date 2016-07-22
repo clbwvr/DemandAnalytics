@@ -10,7 +10,7 @@
 *	outdsn_accum_ts		name of output accumulted time series
 *	outdsn_corr			correlation stat file name
 *	outdsn_select		variable selection file name
-*	byvar				by variable level
+*	by_var				by variable level
 *	y 					dependent variable
 *	x					independent variable list
 * 	time_var			date variable
@@ -34,14 +34,14 @@
 							outdsn_accum_data=,
 							outdsn_corr=,
 							outdsn_select=,
-							outdsn_forecast_x=,
-							byvar=,
+							outdsn_fcst_x=,
+							by_var=,
 							y=,
 							total_input=,
 							ave_input=,
 							time_var=,
 							time_int=,
-							enddate=,
+							end_date=,
 							run_association=1, 
 							stat=RSQ,
 							pw=, 
@@ -54,19 +54,19 @@
 /* Include statements */
 /*==================================================================================*/
 
-%include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\sas_dp_analytics\Variable Selection\var_ts_corr.sas";
-%include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\sas_dp_analytics\Variable Selection\choose_vars.sas";
+%include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\Variable_Selection\var_ts_corr.sas";
+%include "C:\Users\chhaxh\Documents\SAS_CODE_DATA\Variable_Selection\choose_vars.sas";
 
 /*==================================================================================================================================*/
 /* Prepare data																			 											                                                     	*/
 /*==================================================================================================================================*/
 
 	PROC sort data=&dsn out=&outlibn..sort_data;
-		by &byvar. &time_var.;
+		by &by_var. &time_var.;
 	RUN;QUIT;
 
 	PROC TIMESERIES DATA=&outlibn..sort_data OUT=&libn..&outdsn_accum_data;
-		by &BYVAR.;
+		by &by_var.;
 		id &time_var. Interval=&time_int.;
 		VAR &y. /	ACCUMULATE=TOTAL;
 		%if not (&total_input=) %then %do;
@@ -75,10 +75,14 @@
 		%if not (&ave_input=) %then %do;
 			var &ave_input. / ACCUMULATE=AVERAGE;
 		%end;
-		var time_dummy / accumulate=maximum;
 	RUN;QUIT;
 
-%let x=&total_input. &ave_input.; 
+	DATA &libn..&outdsn_accum_data;
+		set &libn..&outdsn_accum_data;
+		time_input=&time_var;
+	RUN;
+
+%let x=&total_input. &ave_input. time_input; 
 
 /*==================================================================================*/
 /* Run assosciation macro or skip */
@@ -94,21 +98,21 @@
 	%let xi=%scan(&x,&i);
 	%do %until(&xi eq %nrstr( ));
 
-		%var_ts_corr(	libn=&outlibn,
-						outlibn=&outlibn,
-						dsn=&libn..&outdsn_accum_data,
+		%var_ts_corr(	libn=&outlibn.,
+						outlibn=&outlibn.,
+						dsn=&libn..&outdsn_accum_data.,
 						outforecast=&xi._f,
-						outdsn=&xi,
-						byvar=&byvar,
-						x=&xi,
-						y=&y,
-						time_var=&time_var,
-						time_int=&time_int,
-						enddate=&enddate
+						outdsn=&xi.,
+						by_var=&by_var.,
+						x=&xi.,
+						y=&y.,
+						time_var=&time_var.,
+						time_int=&time_int.,
+						end_date=&end_date.
 						);
 
 		PROC SORT data=&outlibn..&xi.;
-			by &byvar. stat x;
+			by &by_var. stat x;
 		RUN;QUIT;
 
 		%let i=%eval(&i+1);
@@ -136,10 +140,10 @@
 				%let xi=%scan(&x,&i.);
 			%end;
 		;
-		by &byvar. stat x;
+		by &by_var. stat x;
 	RUN;
 
-	DATA &libn..&outdsn_forecast_x;
+	DATA &libn..&outdsn_fcst_x;
 		merge 
 			%let i=1;
 			%let xi=%scan(&x,&i);
@@ -149,7 +153,7 @@
 				%let xi=%scan(&x,&i.);
 			%end;
 		;
-		by &byvar. &time_var;
+		by &by_var. &time_var;
 	RUN;
 
 	PROC DATASETS library=&libn nolist;
@@ -187,7 +191,7 @@
 					outlibn=&outlibn,
 					dsn=&libn..&outdsn_corr,
 					outdsn=&outdsn_select, 
-					byvar=&byvar, 
+					by_var=&by_var, 
 					stat=&stat, 
 					threshold=&threshold, 
 					maxvar=&maxvar,

@@ -7,10 +7,10 @@
 *	libn				name of SAS library where final output data set resides
 *	outlibn				name of SAS library where temp output data sets resides
 *	dsn					input dataset - libname.filname
-*	outdsn		name of output file with statistics
+*	outdsn				name of output file with statistics
 *	y 					dependent variable
 *	x					independent variable
-*	byvar				by variable level
+*	by_var				by variable level
 * 	time_var			date variable
 *	time_int			time interval
 *	==================================================================================================================
@@ -32,12 +32,12 @@
 					dsn=,
 					outforecast=,
 					outdsn=,
-					byvar=,
+					by_var=,
 					y=,
 					x=,
 					time_var=,
 					time_int=,
-					enddate=
+					end_date=
 				);
 
 
@@ -45,23 +45,23 @@
 /* Pre-whitening step 1: Filter X																			 											                                                     	*/
 /*==================================================================================================================================*/
 
-	PROC hpfdiagnose data=&dsn. outest=&outlibn..est modelrepository=&outlibn..mycat;
-		by &byvar;
+	PROC HPFDIAGNOSE data=&dsn. outest=&outlibn..est modelrepository=&outlibn..mycat;
+		by &by_var.;
 		id &time_var interval= &time_int;
 		forecast &x;
 		arimax;
 	RUN;QUIT;
 
-	PROC hpfengine data=&dsn. out=_null_ inest=&outlibn..est outest=&outlibn..f_est modelrepository=&outlibn..mycat outfor=&outlibn..outfor_x
+	PROC HPFENGINE data=&dsn. out=_null_ inest=&outlibn..est outest=&outlibn..f_est modelrepository=&outlibn..mycat outfor=&outlibn..outfor_x
 								lead=24;
 		id &time_var interval= &time_int;
-		by &byvar;
+		by &by_var;
 		forecast &x / task=select ;
 	RUN;QUIT;
 
-	DATA &outlibn..x_outfor(keep=&byvar error rename=(error=&x._pw)) &libn..&outforecast(keep=&byvar &time_var time_dummy predict rename=(predict=&x));
+	DATA &outlibn..x_outfor(keep=&by_var error rename=(error=&x._pw)) &libn..&outforecast(keep=&by_var. &time_var. time_dummy predict rename=(predict=&x));
 		set &outlibn..outfor_x;
-		if (&time_var le &enddate) then do;
+		if (&time_var le &end_date) then do;
 			if (error eq .) then delete;
 			output &outlibn..x_outfor;
 		end;
@@ -83,11 +83,11 @@
 	PROC hpfengine data=&dsn. out=_null_ inest=&outlibn..f_est modelrepository=&outlibn..mycat outfor=&outlibn..outfor_y
 					lead=0;
 		id &time_var interval=&time_int;
-		by &byvar;
+		by &by_var.;
 		forecast &y / task=fit ;
 	RUN;QUIT;
 
-	DATA &outlibn..y_outfor(keep=&byvar error rename=(error=&y._pw));
+	DATA &outlibn..y_outfor(keep=&by_var error rename=(error=&y._pw));
 		set &outlibn..outfor_y;
 		where error ne .;
 	RUN;
@@ -101,17 +101,17 @@
 	RUN;
 
 	PROC CORR DATA=&outlibn..x_y_filter_data PEARSON OUTP=&outlibn..pre_white_corr NOPRINT;
-		by &byvar;
+		by &by_var.;
 		var &x._pw;
 		with &y._pw;
 	RUN;QUIT;
 
 	PROC REG DATA=&outlibn..x_y_filter_data noprint OUTEST=&outlibn..pre_white_reg EDF TABLEOUT NOPRINT;
-		by &byvar;
+		by &by_var;
 		model &y._pw = &x._pw;
 	RUN;QUIT;
 
-	DATA &outlibn..pre_white_reg_rsq(keep=&byvar _type_ _name_ &x._pw );
+	DATA &outlibn..pre_white_reg_rsq(keep=&by_var _type_ _name_ &x._pw );
 		set &outlibn..pre_white_reg;
 		if (_RSQ_=. ) then delete;
 		_type_="RSQ";
@@ -119,14 +119,14 @@
 		_name_="&x._pw";
 	RUN;
 
-	DATA &outlibn..pre_white_stat(keep=&byvar _type_ _name_ &x._pw rename=(_type_=stat _name_=y));
+	DATA &outlibn..pre_white_stat(keep=&by_var _type_ _name_ &x._pw rename=(_type_=stat _name_=y));
 		set &outlibn..pre_white_corr &outlibn..pre_white_reg &outlibn..pre_white_reg_rsq;
 		if not (_type_="CORR" or _type_="T" or _type_="PVALUE" or _TYPE_="RSQ") then delete;
 		_name_="&y._pw";
 	RUN;
 
 	PROC SORT data=&outlibn..pre_white_stat;
-		by &byvar.;
+		by &by_var.;
 	RUN;QUIT;
 
 /*==================================================================================================================================*/
@@ -134,17 +134,17 @@
 /*==================================================================================================================================*/
 
 	PROC CORR DATA=&dsn. PEARSON OUTP=&outlibn..corr NOPRINT;
-		by &byvar;
+		by &by_var.;
 		var &x;
 		with &y;
 	RUN;QUIT;
 
 	PROC REG DATA=&dsn. noprint OUTEST=&outlibn..reg EDF TABLEOUT noprint;
-		by &byvar;
+		by &by_var.;
 		model &y = &x;
 	RUN;QUIT;
 
-	DATA &outlibn..reg_rsq(keep=&byvar _type_ _name_ &x);
+	DATA &outlibn..reg_rsq(keep=&by_var _type_ _name_ &x);
 		set &outlibn..reg;
 		if (_RSQ_=. ) then delete;
 		_type_="RSQ";
@@ -152,14 +152,14 @@
 		_name_="&x";
 	RUN;
 
-	DATA &outlibn..stat(keep=&byvar &x _type_ _name_ rename=(_type_=stat _name_=y));
+	DATA &outlibn..stat(keep=&by_var &x _type_ _name_ rename=(_type_=stat _name_=y));
 		set &outlibn..corr &outlibn..reg &outlibn..reg_rsq;
 		if not (_type_="CORR" or _type_="T" or _type_="PVALUE" or _TYPE_="RSQ") then delete;
 		_name_="&y";
 	RUN;
 
 	PROC SORT data=&outlibn..stat;
-		by &byvar.;
+		by &by_var.;
 	RUN;QUIT;
 
 /*==================================================================================================================================*/
@@ -168,7 +168,7 @@
 
 	DATA &outlibn..wide;
 		merge &outlibn..pre_white_stat &outlibn..stat;
-		by &byvar;
+		by &by_var.;
 	RUN;
 
 	PROC DATASETS library=&outlibn nolist;
@@ -177,11 +177,11 @@
 	RUN;QUIT;
 
 	PROC SORT data=&outlibn..wide;
-		by &byvar stat;
+		by &by_var. stat;
 	RUN;QUIT;
 
 	PROC TRANSPOSE data=&outlibn..wide out=&outlibn..long(rename=(_name_=x col1=value));
-		by &byvar stat;
+		by &by_var. stat;
 		var &x &x._pw;
 	RUN;QUIT;
 
@@ -230,13 +230,15 @@
 
 %MEND var_ts_corr;
 
-/*	%var_ts_corr(	libn=ss,
-					outlibn=ss_out,
-					dsn=ss.gy_ts,
-					byvar=category,
-					x=CFNAI,
-					y=shipments,
-					time_var=start_dt,
-					time_int=month,
-					outdsn=test
-				);*/
+/*		%var_ts_corr(	libn=ss_out,*/
+/*						outlibn=ss_out,*/
+/*						dsn=ss_out.ts_1,*/
+/*						outforecast=forcast_x_1,*/
+/*						outdsn=&xi.,*/
+/*						by_var=region,*/
+/*						x=x,*/
+/*						y=shipment,*/
+/*						time_var=start_dt,*/
+/*						time_int=month,*/
+/*						end_date='01feb2015'd*/
+/*						);*/

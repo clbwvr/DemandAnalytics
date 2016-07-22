@@ -10,7 +10,7 @@
 *	outlibn				name of SAS library where output data sets reside
 *	dsn					set of forecast time series data sets, that reside in 'libn'
 *	outdsn				the ensembled output data set
-*	byvar				by variables used in identification by variables
+*	by_var				by variables used in identification by variables
 *	y					response variable name
 *	predict				name of prediction variable, it is presumeed that all data sets has the same name of the prediction column
 *	input				set of prediction variables used in the final ensemble
@@ -29,11 +29,11 @@
 							outlibn=,
 							dsn=,
 							outdsn=,
-							byvar=,
+							by_var=,
 							y=,
 							predict=,
 							input=,
-							date_var=,
+							time_var=,
 							time_int=,
 							score_start_date=,
 							no_time_per=
@@ -44,31 +44,32 @@
 /*=======================================================================================================*/
 
 	%let i = 1;
-	%let dsn_iter = %scan(&dsn, &i);
+	%let dsn_iter = %scan(&dsn, &i, ' ');
 	%do %while("&dsn_iter" ne "");
-	PROC SQL;
-	   CREATE TABLE &outlibn..ts_&i AS 
-	   SELECT
-	    %let j = 1;
-		%let byvar_iter = %scan(&byvar, &j);
-	  	%do %while("&byvar_iter" ne "");
-		    t1.&byvar_iter,
-		    %let j = %eval(&j + 1);
-		    %let byvar_iter = %scan(&byvar, &j); 
-	    %end; 
-		t1.&date_var, 
-		t1.&y,
-		t1.&PREDICT as PREDICT&i
-	    FROM 
-		&libn..&dsn_iter t1;
-	QUIT;
+		%put &dsn_iter;
+		PROC SQL;
+		   CREATE TABLE &outlibn..ts_&i AS 
+		   SELECT
+		    %let j = 1;
+			%let by_var_iter = %scan(&by_var, &j);
+		  	%do %while("&by_var_iter" ne "");
+			    t1.&by_var_iter,
+			    %let j = %eval(&j + 1);
+			    %let by_var_iter = %scan(&by_var., &j);
+		    %end; 
+			t1.&time_var, 
+			t1.&y,
+			t1.&PREDICT as PREDICT&i
+		    FROM 
+			&dsn_iter t1;
+		QUIT;
 
-	PROC SORT data=&outlibn..ts_&i;
-		by &byvar.;
-	RUN;QUIT;
+		PROC SORT data=&outlibn..ts_&i;
+			by &by_var.;
+		RUN;QUIT;
 
-	%let i = %eval(&i + 1);
-	%let dsn_iter = %scan(&dsn, &i);
+		%let i = %eval(&i + 1);
+		%let dsn_iter = %scan(&dsn, &i, ' ');
 	%end;
 
 	DATA &outlibn..merge_forecast;
@@ -78,7 +79,7 @@
 	  	%do k=1 %to &i - 1;
 			&outlibn..ts_&k 
 	    %end;
-		; by &byvar.;
+		; by &by_var.;
 	RUN;
 
 /*=======================================================================================================*/
@@ -87,7 +88,7 @@
 
 	DATA &outlibn..out_train &outlibn..out_score;
 		set &outlibn..merge_forecast;
-		if (&date_var. < &score_start_date.) then output &outlibn..out_train;
+		if (&time_var. < &score_start_date.) then output &outlibn..out_train;
 		else output &outlibn..out_score;
 	RUN; 
 
@@ -97,13 +98,13 @@
 
 	DATA &outlibn..train_add;
 		set &outlibn..out_train;	
-		if &date_var >= intnx("&time_int", &score_start_date., -&no_time_per) then do;
+		if &time_var. >= intnx("&time_int", &score_start_date., -&no_time_per.) then do;
 			train = 1;
 		end;
 		else do;
 			train = 0;
 		end;
-		if &no_time_per=0 then train=1;
+		if &no_time_per.=0 then train=1;
 	RUN;
 		
 /*====================================================================================================*/
@@ -111,7 +112,7 @@
 /*====================================================================================================*/
 
 	PROC SORT data=&outlibn..train_add;
-		by &byvar. &date_var.;
+		by &by_var. &time_var.;
 	RUN;QUIT;
 
 * HPF score and train;
@@ -124,10 +125,10 @@
 		errorcontrol=(severity=HIGH stage=(PROCEDURELEVEL)) 
 		EXCEPTIONS=CATCH
 		errorcontrol=(severity=none stage=all);
-		by &byvar;
-		forecast &y / accumulate=total;
+		by &by_var.;
+		forecast &y. / accumulate=total;
 		input &input. / required=YES accumulate=Total setmissing=previous;
-		id &date_var interval=&time_int notsorted;
+		id &time_var. interval=&time_int.;
 		arimax;
 		esm method=best;
 	RUN;QUIT;
@@ -136,19 +137,19 @@
 		inest=&outlibn..in_est
 		modelrepository=mycat
 		out=_NULL_
-		outfor=&outlibn..forecast_hpf(keep=&byvar &date_var predict rename=(predict=predict_hpf))
+		outfor=&outlibn..forecast_hpf(keep=&by_var &time_var. predict rename=(predict=predict_hpf))
 		lead=24
 		errorcontrol=(severity=HIGH, stage=(PROCEDURELEVEL))
 		EXCEPTIONS=CATCH;
-		by &byvar.;
-		id &date_var interval=&time_int notsorted;
-		forecast &y  / accumulate=total;
+		by &by_var.;
+		id &time_var. interval=&time_int.;
+		forecast &y.  / accumulate=total;
 		input &input. / required=YES accumulate=Total setmissing=previous;
 	RUN;QUIT;
 
-	DATA &outlibn..pred_train_hpf(keep=&byvar. &date_var. predict_hpf) &outlibn..scored_predict_hpf(keep=&byvar. &date_var. predict_hpf);
+	DATA &outlibn..pred_train_hpf(keep=&by_var. &time_var. predict_hpf) &outlibn..scored_predict_hpf(keep=&by_var. &time_var. predict_hpf);
 		set &outlibn..forecast_hpf;
-		if (&date_var. < &score_start_date.) then output &outlibn..pred_train_hpf;
+		if (&time_var. < &score_start_date.) then output &outlibn..pred_train_hpf;
 		else output &outlibn..scored_predict_hpf;
 	RUN; 
 
@@ -157,8 +158,8 @@
 *------------------------------------------------------------------------------------------------------;
 
 	PROC HPREG data=&outlibn..train_add noprint;
-		id &byvar. &date_var.;
-		by &byvar.;
+		id &by_var. &time_var.;
+		by &by_var.;
 		%if not (&no_time_per=0) %then %do; partition rolevar=train(train='1' validate='0'); %end;
 		model &y=&input.;
 		output out=&outlibn..pred_train_reg predicted=predict_reg;
@@ -168,19 +169,19 @@
 * Neural train;
 *------------------------------------------------------------------------------------------------------;
 
-%let col=%scan(&byvar,-1);
+%let col=%scan(&by_var,-1);
 
-proc sort data=&outlibn..train_add;
-	by &col;
-run;quit;
+	PROC SORT data=&outlibn..train_add;
+		by &col;
+	RUN;QUIT;
 
-data &outlibn..train_add;
-			set &outlibn..train_add end=eof;
-			by &col;
-			retain colid 0;
-			if first.&col then colid + 1;
-			if eof then call symputx("last_colid",colid);
-run;
+	DATA &outlibn..train_add;
+				set &outlibn..train_add end=eof;
+				by &col;
+				retain colid 0;
+				if first.&col then colid + 1;
+				if eof then call symputx("last_colid",colid);
+	RUN;
 
 %do j = 1 %to &last_colid;
 
@@ -190,7 +191,7 @@ run;
 	RUN;
 
 	PROC HPNEURAL data=&outlibn..vals_neur_&j noprint;
-		id &byvar. &date_var.;
+		id &by_var. &time_var.;
 		%if not (&no_time_per=0) %then %do; partition rolevar=train( train=1); %end;
 		input &input. / level=int;
 		target &y / level=int act=tanh;
@@ -211,7 +212,7 @@ run;
 	RUN;
 
 	PROC SORT data=&outlibn..pred_train_neural;
-		by &byvar. &date_var.;
+		by &by_var. &time_var.;
 	RUN;QUIT;
 
 	PROC DATASETS library=&outlibn memtype=data nolist;
@@ -222,9 +223,9 @@ run;
 * Merge;
 *------------------------------------------------------------------------------------------------------;
 
-	DATA &outlibn..pred_train_hpf_reg_neural;
+	DATA &outlibn..pred_train_hpf_reg_neural(drop=colid);
 		merge &outlibn..pred_train_hpf &outlibn..pred_train_reg &outlibn..pred_train_neural &outlibn..train_add;
-		by &byvar. &date_var.;
+		by &by_var. &time_var.;
 	RUN;
  
 /*====================================================================================================*/
@@ -232,7 +233,7 @@ run;
 /*====================================================================================================*/
 
 	PROC HPNEURAL data=&outlibn..pred_train_hpf_reg_neural noprint;
-		id &byvar. &date_var.;
+		id &by_var. &time_var.;
 		%if not (&no_time_per=0) %then %do; partition rolevar=train( train=1); %end;
 		input predict_hpf predict_reg predict_neural / level=int;
 		target &y / level=int act=tanh;
@@ -244,7 +245,7 @@ run;
 
 	DATA &outlibn..pred_train_final_all(drop=train);
 		merge &outlibn..pred_train_hpf_reg_neural &outlibn..pred_train_final;
-		by &byvar. &date_var.;
+		by &by_var. &time_var.;
 	RUN;
 
 /*====================================================================================================*/
@@ -252,7 +253,7 @@ run;
 /*====================================================================================================*/
 
 	PROC SORT data=&outlibn..out_score;
-		by &byvar. &date_var.;
+		by &by_var. &time_var.;
 	RUN;QUIT;
 
 * Regression score;
@@ -281,7 +282,7 @@ run;
 
 	DATA &outlibn..scored_predict_final;
 		merge &outlibn..scored_predict_hpf &outlibn..scored_predict_reg &outlibn..scored_predict_neural;
-		by &byvar. &date_var.;
+		by &by_var. &time_var.;
 	RUN; 
 
 	DATA &outlibn..scored_predict_final_all(drop=_WARN_);
@@ -297,7 +298,7 @@ run;
 
 	DATA &libn..&outdsn;
 		set &outlibn..pred_train_final_all &outlibn..scored_predict_final_all;
-		by &byvar. &date_var.;
+		by &by_var. &time_var.;
 		diff_n=abs(&y-predict_neural);
 		diff_r=abs(&y-predict_reg);
 		diff_h=abs(&y-predict_hpf);

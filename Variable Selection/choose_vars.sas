@@ -9,7 +9,7 @@
 *	dsn					input dataset - libname.filname
 *	stat				statistic for quantifying significance (CORR, RSQ, PVALUE, or T)
 *	pw					0 for nonprewhitened variables, 1 for prewhitened variables
-*	byvar				by variable level
+*	by_var				by variable level
 *	y					response variable
 *	value				name of column that contains association stats
 *	prewhite_indicator	name of prewhitning indicator column (1=prewhite, 0=default)
@@ -34,7 +34,7 @@
 					outlibn=,
 					dsn=, 
 					outdsn=, 
-					byvar=,
+					by_var=,
 					y=y,
 					value=value,
 					prewhite_indicator=pw,
@@ -75,21 +75,21 @@
 		where &stat_var_name.=upcase("&stat") and &prewhite_indicator. = "&pw";
 		by
 		%if %upcase(&stat) in RSQ CORR T %then %do;
-			&y &byvar descending &value._abs;
+			&y &by_var descending &value._abs;
 		%end;
 		%else %if %upcase(&stat) in PVALUE %then %do;
-			&y &byvar &value;
+			&y &by_var &value;
 		%end;
 	RUN;QUIT;
 
 	DATA _null_;
-		call symputx("lastby", scan("&byvar",-1));
+		call symputx("lastby", scan("&by_var",-1));
 	RUN;
 
 	DATA &outlibn..t1;
 		set &outlibn..t1;
 		retain rank 0;
-		by &y &byvar;
+		by &y &by_var;
 		if first.&lastby then rank=0;
 		rank + 1;
 		output;
@@ -103,13 +103,13 @@
 		*Normalize;
 		proc means data=&outlibn..t1 sum noprint;
 			var &value._abs;
-			by &y &byvar;
+			by &y &by_var;
 			output out=&outlibn..sums sum=sum;
 		run;
 		data &outlibn..t1;
 			merge &outlibn..t1(in=a) &outlibn..sums;
 			if a;
-			by &y &byvar;
+			by &y &by_var;
 		run;
 		data &outlibn..t1(drop=sum);
 			set &outlibn..t1;
@@ -118,7 +118,7 @@
 
 		* Step through distribution;
 		proc sort data=&outlibn..t1; 
-			by &y &byvar 
+			by &y &by_var 
 			%if %upcase(&stat) in RSQ CORR T %then %do;
 				descending 
 			%end; 
@@ -127,7 +127,7 @@
 		data &outlibn..t1(drop=_type_ _freq_);
 			set &outlibn..t1;
 			retain accum 0;
-			by &y &byvar;
+			by &y &by_var;
 			if first.&lastby then accum = 0;
 			accum + norm_&y;
 			output;
