@@ -454,7 +454,7 @@ ods noresults;
 *-------------------------------------------------------------------------------------------------------------------;
 
 	DATA &libn..&outdsn_byvar_ts(drop=&prefix_use:);
-		merge &outlibn..timedata &outlibn..fast_clus_season;
+		merge &outlibn..train_cluster &outlibn..fast_clus_season;
 		by &byvar_clus;
 	RUN;
 	

@@ -41,7 +41,7 @@
 *	reg_class						class regression variables in the volume regression,
 *	reg_input						all regression variables in the volume regression,
 *	neural_input_nom 				nominal variables in the neural network model - at least one,
-*	neural_input_int				interval varaibles in the neural network model - at least one,
+*	neural_input_int				interval varaibles in the neural network model,
 *	min_ts_length					minimum lenght of time series included in the cluster training		
 *	index_no						number of indexes used for each time series where pattern or volume are clustering is performed on 
 *	cluster_threshold				determine number of clusters - default set to 0.02
